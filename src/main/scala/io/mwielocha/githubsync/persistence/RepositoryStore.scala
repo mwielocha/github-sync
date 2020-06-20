@@ -11,6 +11,7 @@ import scala.concurrent.Future
 import akka.stream.scaladsl.Sink
 import akka.NotUsed
 import akka.Done
+import com.typesafe.scalalogging.LazyLogging
 
 class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
 
@@ -32,7 +33,7 @@ class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
     })
 }
 
-class RepositoryStore(db: Database) {
+class RepositoryStore(db: Database) extends LazyLogging {
 
   object repositories extends TableQuery(new Repositories(_))
 
@@ -43,19 +44,22 @@ class RepositoryStore(db: Database) {
 
   def find(id: Repository.Id): Future[Option[Repository]] =
     db.run {
-      repositories.filter(_.id === id)
-        .result
-        .headOption
+      repositories.filter(_.id === id).result.headOption
     }
 
   def findAll(limit: Int, offset: Int): Future[Seq[Repository]] =
     db.run {
-      repositories.drop(offset)
+      repositories
+        .drop(offset)
         .take(limit)
         .result
     }
 
   def sink: Sink[Repository, Future[Done]] =
-    Sink.foreachAsync[Repository](1)(insertOrUpdate(_).map(_ => (Done)))
+    Sink.foreachAsync[Repository](1) { repository =>
+      for {
+        _ <- insertOrUpdate(repository)
+      } yield logger.debug("Stored: {}", repository)
+    }
 
 }

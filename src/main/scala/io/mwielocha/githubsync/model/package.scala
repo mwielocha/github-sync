@@ -19,6 +19,9 @@ package object model {
     Decoder.decodeLong.map(tag[T][Long](_))
 
   implicit val userCodec: Codec[User] = deriveConfiguredCodec[User]
+  implicit val errorCodec: Codec[Error] = deriveConfiguredCodec[Error]
   implicit val repositoryCodec: Codec[Repository] = deriveConfiguredCodec[Repository]
+
+  implicit def searchCodec[T : Codec]: Codec[Search[T]] = deriveConfiguredCodec[Search[T]]
 
 }

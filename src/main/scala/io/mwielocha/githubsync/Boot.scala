@@ -52,6 +52,7 @@ object Boot extends App with LazyLogging {
       )
       _ = application.githubSync.start().onComplete {
         case Success(_) =>
+          logger.info("Stream finished.")
         case Failure(e) =>
           logger.error("Error while streaming from github", e)
       }

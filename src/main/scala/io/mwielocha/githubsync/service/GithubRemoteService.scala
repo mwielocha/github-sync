@@ -6,6 +6,8 @@ import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import akka.stream.scaladsl.Source
 import akka.http.scaladsl.model.HttpRequest
 import scala.concurrent.duration._
+import io.mwielocha.githubsync.model.Search
+import io.mwielocha.githubsync.model.Error
 import io.mwielocha.githubsync.model.Repository
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import scala.util.Success
@@ -22,6 +24,17 @@ import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.Authorization
 import akka.http.scaladsl.model.headers.HttpCredentials
 import akka.http.scaladsl.model.headers.BasicHttpCredentials
+import akka.stream.ThrottleMode
+import akka.http.scaladsl.model.Uri
+import akka.stream.scaladsl.Sink
+import scala.util.Try
+import cats.implicits._
+import akka.http.scaladsl.model.headers.Link
+import akka.http.scaladsl.model.headers.LinkParam
+import akka.http.scaladsl.model.headers.LinkParams
+import cats.data.OptionT
+import akka.http.scaladsl.model.StatusCodes
+import scala.collection.Searching.SearchResult
 
 class GithubRemoteService(
   auth: GithubAuth
@@ -44,28 +57,86 @@ class GithubRemoteService(
   private def headers: Seq[HttpHeader] =
     basicAuth.map(Authorization(_)).to(Seq)
 
-  private def unmarshall(response: HttpResponse): Future[Seq[Repository]] =
-    Unmarshal(response).to[Seq[Repository]]
+  private def unmarshall(response: HttpResponse): Future[Search[Repository]] =
+    Unmarshal(response.entity).to[Search[Repository]]
 
-  private def throttle[T, K](source: Source[(T, Unit), K]) =
+  private def rate: Int =
     basicAuth match {
-      case None    => source.throttle(60, 1 hour)
-      case Some(_) => source.throttle(5000, 1 hour)
+      case None    => 10
+      case Some(_) => 30
     }
 
+  def page(uri: Uri): Future[Try[HttpResponse]] =  {
+
+    logger.debug("Submitting request for: {}", uri)
+
+    Source
+      .single(
+        HttpRequest(uri = uri)
+          .withHeaders(headers) -> ()
+      )
+      .via(pool).map {
+        case (response, _) =>
+          response
+      }.runWith(Sink.head)
+  }
+
+
+  val baseUri = Uri("/search/repositories")
+
+  val uri = baseUri.withQuery(
+    Uri.Query(
+      "q" -> "good-first-issues:>1 language:haskell",
+      "sort" -> "help-wanted-issues",
+      "order" -> "desc",
+      "per_page" -> "50"
+    )
+  )
+
+  private val isNextLink: LinkParam => Boolean = {
+    case LinkParams.rel("next") => true
+    case _                      => false
+  }
+
+  private type UnfoldAsync = Future[Option[(Uri, Search[Repository])]]
+
+  private val unfold: Uri => UnfoldAsync = { uri =>
+    page(uri).flatMap {
+
+      case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
+        processResponse(response)
+
+      case Success(response) =>
+        processErrorResponse(uri, response)
+
+      case Failure(e) =>
+        logger.error("Error on request", e)
+        throw e      
+    }
+  }
+
+  private def processResponse(response: HttpResponse): UnfoldAsync =
+    (for {
+       result <- OptionT.liftF(unmarshall(response))
+       header <- OptionT.fromOption[Future](response.header[Link])
+       link <- OptionT.fromOption[Future] {
+         header.values.find(_.params.exists(isNextLink))
+       }
+     } yield baseUri.withQuery(link.uri.query()) -> result).value
+
+  private def processErrorResponse(uri: Uri, response: HttpResponse): UnfoldAsync = {
+    for {
+      error <- Unmarshal(response.entity).to[Error]
+      _ = logger.error("Got error response from github: {}", error.message)
+    } yield throw error
+  }
+
+
   def source: Source[Repository, NotUsed] =
-    throttle {
-      Source
-        .repeat(
-          HttpRequest(uri = "/repositories")
-            .withHeaders(headers) -> ()
-        )
-    }.via(pool).mapAsync(1) {
-        case (Success(response), _) =>
-          unmarshall(response)
-        case (Failure(e), _) =>
-          logger.error("Error on request", e)
-          throw e
-      }.mapConcat(identity)
+    Source
+      .unfoldAsync[Uri, Search[Repository]](uri)(unfold)
+      .map(_.items)
+      .throttle(rate, 1 minute, 1, ThrottleMode.Shaping)
+      .mapConcat(identity)
 
 }
