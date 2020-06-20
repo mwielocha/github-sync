@@ -45,10 +45,10 @@ object Boot extends App with LazyLogging {
 
     sys.addShutdownHook {
       Await.result(
-        application
-          .actorSystem
+        application.actorSystem
           .terminate(),
-        1 second)
+        1 second
+      )
     }
   }
 }
