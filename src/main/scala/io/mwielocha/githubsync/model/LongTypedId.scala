@@ -8,6 +8,7 @@ trait LongTypedId[T] {
   type Id = Long @@ T
 
   object Id {
+
     def apply(id: Long): Id =
       tag[T][Long](id)
   }

@@ -7,5 +7,4 @@ trait HttpBlueprint {
 
   // todo
 
-
 }

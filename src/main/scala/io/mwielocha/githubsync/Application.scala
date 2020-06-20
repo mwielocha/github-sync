@@ -9,5 +9,5 @@ class Application(
   val githubSync: GithubSyncService
 )(
   implicit
-    val actorSystem: ActorSystem
+  val actorSystem: ActorSystem
 )

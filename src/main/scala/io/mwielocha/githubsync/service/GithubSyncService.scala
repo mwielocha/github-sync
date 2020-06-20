@@ -13,10 +13,10 @@ import akka.stream.scaladsl.Sink
 class GithubSyncService(
   store: RepositoryStore,
   github: GithubRemoteService
-)(implicit actorSystem: ActorSystem) extends LazyLogging {
+)(implicit actorSystem: ActorSystem)
+    extends LazyLogging {
 
   def start(): Future[Done] =
     github.source.runWith(store.sink)
-
 
 }

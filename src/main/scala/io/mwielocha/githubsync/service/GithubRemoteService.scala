@@ -66,7 +66,7 @@ class GithubRemoteService(
       case Some(_) => 30
     }
 
-  def page(uri: Uri): Future[Try[HttpResponse]] =  {
+  private def page(uri: Uri): Future[Try[HttpResponse]] = {
 
     logger.debug("Submitting request for: {}", uri)
 
@@ -81,10 +81,9 @@ class GithubRemoteService(
       }.runWith(Sink.head)
   }
 
+  private [service] val baseUri = Uri("/search/repositories")
 
-  val baseUri = Uri("/search/repositories")
-
-  val uri = baseUri.withQuery(
+  private [service] val baseQuery = baseUri.withQuery(
     Uri.Query(
       "q" -> "good-first-issues:>1 language:haskell",
       "sort" -> "help-wanted-issues",
@@ -107,34 +106,33 @@ class GithubRemoteService(
         processResponse(response)
 
       case Success(response) =>
-        processErrorResponse(uri, response)
+        processErrorResponse(response)
 
       case Failure(e) =>
         logger.error("Error on request", e)
-        throw e      
+        throw e
     }
   }
 
-  private def processResponse(response: HttpResponse): UnfoldAsync =
+  private[service] def processResponse(response: HttpResponse): UnfoldAsync =
     (for {
-       result <- OptionT.liftF(unmarshall(response))
-       header <- OptionT.fromOption[Future](response.header[Link])
-       link <- OptionT.fromOption[Future] {
-         header.values.find(_.params.exists(isNextLink))
-       }
-     } yield baseUri.withQuery(link.uri.query()) -> result).value
+      result <- OptionT.liftF(unmarshall(response))
+      header <- OptionT.fromOption[Future](response.header[Link])
+      link <- OptionT.fromOption[Future] {
+        header.values.find(_.params.exists(isNextLink))
+      }
+    } yield baseUri.withQuery(link.uri.query()) -> result).value
 
-  private def processErrorResponse(uri: Uri, response: HttpResponse): UnfoldAsync = {
+  private [service] def processErrorResponse(response: HttpResponse): UnfoldAsync = {
     for {
       error <- Unmarshal(response.entity).to[Error]
       _ = logger.error("Got error response from github: {}", error.message)
     } yield throw error
   }
 
-
   def source: Source[Repository, NotUsed] =
     Source
-      .unfoldAsync[Uri, Search[Repository]](uri)(unfold)
+      .unfoldAsync[Uri, Search[Repository]](baseQuery)(unfold)
       .map(_.items)
       .throttle(rate, 1 minute, 1, ThrottleMode.Shaping)
       .mapConcat(identity)
