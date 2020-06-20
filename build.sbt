@@ -13,9 +13,11 @@ mainClass in (Compile, run) := Some("io.mwielocha.githubsync.Boot")
 val akkaVersion = "2.6.4"
 val slickVersion = "3.3.2"
 val circeVersion = "0.13.0"
+val slickpgVersion = "0.19.0"
 val logbackVersion = "1.2.3"
 val factorioVersion = "0.2.0"
 val akkaHttpVersion = "10.1.12"
+val slicklessVersion = "0.3.6"
 val shapelessVersion = "2.3.3"
 val scalatestVersion = "3.1.1"
 val pureConfigVersion = "0.12.3"
@@ -40,6 +42,9 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic-extras" % circeVersion,
   "com.typesafe.slick" %% "slick" % slickVersion,
   "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
+  "com.github.tminglei" %% "slick-pg" % slickpgVersion,
+  "com.github.tminglei" %% "slick-pg_circe-json" % slickpgVersion,
+  "io.underscore"      %% "slickless" % slicklessVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "io.mwielocha" %% "factorio-core" % factorioVersion,
   "io.mwielocha" %% "factorio-annotations" % factorioVersion,

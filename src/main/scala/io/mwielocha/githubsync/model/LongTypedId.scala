@@ -3,12 +3,12 @@ package io.mwielocha.githubsync.model
 import shapeless.tag
 import shapeless.tag.@@
 
-trait LongTypedId[Entity] {
+trait LongTypedId[T] {
 
-  type Id = Long @@ Entity
+  type Id = Long @@ T
 
   object Id {
     def apply(id: Long): Id =
-      tag[Entity][Long](id)
+      tag[T][Long](id)
   }
 }

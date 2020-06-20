@@ -6,28 +6,19 @@ import scala.concurrent.Future
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import io.mwielocha.githubsync.model.Repository
 import io.mwielocha.githubsync.model.User
+import io.mwielocha.githubsync.persistence.RepositoryStore
+import scala.annotation.meta.param
 
-class Routes extends ErrorAccumulatingCirceSupport {
+class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSupport {
+
+  private val limit = parameter("offset" ? 0)
+  private val offset = parameter("limit" ? 50)
 
   def apply(): Route =
     path("challenge") {
-      get {
+      (get & offset & limit) { (offset, limit) =>
         complete(
-          Future.successful(
-            List(
-              Repository(
-                Repository.Id(1L),
-                User(
-                  User.Id(1L),
-                  "John"
-                ),
-                "Random repo",
-                "http://google.com",
-                "Full name random repo",
-                "Just a repo"
-              )
-            )
-          )
+          repositoryStore.findAll(offset, limit)
         )
       }
     }
