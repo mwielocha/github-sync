@@ -39,18 +39,16 @@ object Boot extends App with LazyLogging {
 
     val application = assemble()
 
-    import application.actorSystem
-    import application.actorSystem.dispatcher
-
-    val http = Http()
+    import application._
+    import actorSystem.dispatcher
 
     for {
       _ <- http.bindAndHandle(
-        application.routes(),
+        routes(),
         config.host,
         config.port
       )
-      _ = application.githubSync.start().onComplete {
+      _ = githubSync.start().onComplete {
         case Success(_) =>
           logger.info("Stream finished.")
         case Failure(e) =>
@@ -60,7 +58,7 @@ object Boot extends App with LazyLogging {
 
     sys.addShutdownHook {
       Await.result(
-        application.actorSystem
+        actorSystem
           .terminate(),
         1 second
       )

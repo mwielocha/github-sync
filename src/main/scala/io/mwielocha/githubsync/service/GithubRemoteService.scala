@@ -35,8 +35,10 @@ import akka.http.scaladsl.model.headers.LinkParams
 import cats.data.OptionT
 import akka.http.scaladsl.model.StatusCodes
 import scala.collection.Searching.SearchResult
+import akka.http.scaladsl.HttpExt
 
 class GithubRemoteService(
+  http: HttpExt,
   auth: GithubAuth
 )(
   implicit
@@ -46,7 +48,7 @@ class GithubRemoteService(
 
   import actorSystem.dispatcher
 
-  private val pool = Http().cachedHostConnectionPoolHttps[Unit](host = "api.github.com")
+  private val pool = http.cachedHostConnectionPoolHttps[Unit](host = "api.github.com")
 
   private def basicAuth: Option[BasicHttpCredentials] =
     for {
