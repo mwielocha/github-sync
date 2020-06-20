@@ -8,5 +8,5 @@ case class Repository(
   name: String,
   htmlUrl: String,
   fullName: String,
-  description: String
+  description: Option[String]
 )

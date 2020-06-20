@@ -8,6 +8,9 @@ import shapeless.{ HList, ::, HNil }
 import slickless._
 import cats.syntax.option._
 import scala.concurrent.Future
+import akka.stream.scaladsl.Sink
+import akka.NotUsed
+import akka.Done
 
 class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
 
@@ -51,5 +54,8 @@ class RepositoryStore(db: Database) {
         .take(limit)
         .result
     }
+
+  def sink: Sink[Repository, Future[Done]] =
+    Sink.foreachAsync[Repository](1)(insertOrUpdate(_).map(_ => (Done)))
 
 }

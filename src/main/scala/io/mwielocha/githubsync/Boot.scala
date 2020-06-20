@@ -18,6 +18,8 @@ import pureconfig._
 import pureconfig.generic.auto._
 import io.mwielocha.githubsync.config.AppConfig
 import pureconfig.error.ConfigReaderFailures
+import scala.util.Success
+import scala.util.Failure
 
 object Boot extends App with LazyLogging {
 
@@ -38,10 +40,22 @@ object Boot extends App with LazyLogging {
     val application = assemble()
 
     import application.actorSystem
+    import application.actorSystem.dispatcher
 
     val http = Http()
 
-    http.bindAndHandle(application.routes(), config.host, config.port)
+    for {
+      _ <- http.bindAndHandle(
+        application.routes(),
+        config.host,
+        config.port
+      )
+      _ = application.githubSync.start().onComplete {
+        case Success(_) =>
+        case Failure(e) =>
+          logger.error("Error while streaming from github", e)
+      }
+    } yield ()
 
     sys.addShutdownHook {
       Await.result(
