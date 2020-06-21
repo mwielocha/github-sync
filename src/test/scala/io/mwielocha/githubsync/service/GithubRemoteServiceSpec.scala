@@ -20,16 +20,22 @@ import io.mwielocha.githubsync.model.User
 import io.mwielocha.githubsync.model.Error
 import io.circe.syntax._
 import io.circe.Printer
+import akka.http.scaladsl.Http
+import scala.concurrent.Future
+import scala.util.Try
+import scala.collection.Searching.SearchResult
 
 class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll {
 
-  private val service = new GithubRemoteService(GithubAuth(None, None))
+  private val service = new GithubRemoteService(Http(), GithubAuth(None, None))
+
+  import service.GetPage
 
   override def afterAll: Unit = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "GithubRemoteService" should "process a correct github api response" in {
+  "GithubRemoteService" should "unfold a correct github api response" in {
 
     val repository = Repository(
       Repository.Id(956452),
@@ -58,24 +64,28 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       )
       .withHeaders(Seq(linkHeader))
 
+    val getPage: GetPage =
+      _ => Future.successful(Try(response))
+
     for {
-      processed <- service.processResponse(response)
+      processed <- service.unfold(getPage, Uri(""))
     } yield processed shouldBe Some(
       service.baseUri.withQuery(nextLinkQuery) -> search
     )
   }
 
-  it should "process an error github response" in {
+  it should "unfold an error github response" in {
 
     val json = """ { "message": "bad" } """
 
     val response = HttpResponse(403)
       .withEntity(ContentTypes.`application/json`, ByteString.fromString(json))
 
+    val getPage: GetPage =
+      _ => Future.successful(Try(response))
+
     for {
-      processed <- service.processErrorResponse(response).recover {
-        case e: Exception => e
-      }
-    } yield processed shouldBe Error("bad", None)
+      processed <- service.unfold(getPage, Uri(""))
+    } yield processed shouldBe Some(Uri("") -> Search.empty)
   }
 }

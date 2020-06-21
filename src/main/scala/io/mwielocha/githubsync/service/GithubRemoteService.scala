@@ -68,7 +68,9 @@ class GithubRemoteService(
       case Some(_) => 30
     }
 
-  private def page(uri: Uri): Future[Try[HttpResponse]] = {
+  private [service] type GetPage = Uri => Future[Try[HttpResponse]]
+
+  private val getPage: GetPage = { uri =>
 
     logger.debug("Submitting request for: {}", uri)
 
@@ -101,20 +103,21 @@ class GithubRemoteService(
 
   private type UnfoldAsync = Future[Option[(Uri, Search[Repository])]]
 
-  private val unfold: Uri => UnfoldAsync = { uri =>
-    page(uri).flatMap {
+  private [service] def unfold(uri: Uri): UnfoldAsync = unfold(getPage, uri)
+
+  private [service] def unfold(getPage: GetPage, uri: Uri): UnfoldAsync =
+    getPage(uri).flatMap {
 
       case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
         processResponse(response)
 
       case Success(response) =>
-        processErrorResponse(response)
+        processErrorResponse(uri, response)
 
       case Failure(e) =>
         logger.error("Error on request", e)
         throw e
     }
-  }
 
   private[service] def processResponse(response: HttpResponse): UnfoldAsync =
     (for {
@@ -125,11 +128,11 @@ class GithubRemoteService(
       }
     } yield baseUri.withQuery(link.uri.query()) -> result).value
 
-  private [service] def processErrorResponse(response: HttpResponse): UnfoldAsync = {
+  private [service] def processErrorResponse(uri: Uri, response: HttpResponse): UnfoldAsync = {
     for {
       error <- Unmarshal(response.entity).to[Error]
       _ = logger.error("Got error response from github: {}", error.message)
-    } yield throw error
+    } yield Some(uri -> Search[Repository](Nil, 0))
   }
 
   def source: Source[Repository, NotUsed] =
