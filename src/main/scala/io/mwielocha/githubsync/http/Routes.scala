@@ -14,7 +14,7 @@ class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSup
   private val limit = parameter("offset" ? 0)
   private val offset = parameter("limit" ? 50)
 
-  def apply(): Route =
+  def apply(): Route = extractExecutionContext { implicit ec =>
     path("challenge") {
       (get & offset & limit) { (offset, limit) =>
         complete(
@@ -22,5 +22,5 @@ class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSup
         )
       }
     }
-
+  }
 }

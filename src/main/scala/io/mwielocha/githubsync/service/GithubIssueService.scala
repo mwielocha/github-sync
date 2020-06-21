@@ -21,7 +21,7 @@ class GithubIssueService(
     Uri(s"/repos/${repository.owner.login}/${repository.name}/issues")
 
   private [service] def baseQuery(repository: Repository) =
-    baseUri(repository).withQuery(Uri.Query("per_page" -> "100"))
+    baseUri(repository).withQuery(Uri.Query("labels" -> "good first issue", "per_page" -> "100"))
 
   val unfold: Uri => UnfoldAsync[Seq[Issue]] = api.unfold(_)(Nil)
 

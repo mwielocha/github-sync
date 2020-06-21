@@ -25,7 +25,7 @@ class GithubSyncService(
       for {
         _ <- repoStore.insertOrUpdate(repo)
         done <- issues.source(repo).map {
-          RepositoryIssue(_, repo.id)
+          repo.id -> _
         }.runFoldAsync(Done) { (_, issue) =>
           for {
             _ <- issueStore.insertOrUpdate(issue)

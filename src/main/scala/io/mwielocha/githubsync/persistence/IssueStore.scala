@@ -3,7 +3,7 @@ package io.mwielocha.githubsync.persistence
 import api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import io.mwielocha.githubsync.model.{ RepositoryIssue, Issue }
+import io.mwielocha.githubsync.model.Issue
 import shapeless.{ HList, ::, HNil }
 import slickless._
 import cats.syntax.option._
@@ -14,7 +14,7 @@ import akka.Done
 import com.typesafe.scalalogging.LazyLogging
 import io.mwielocha.githubsync.model.Repository
 
-class Issues(tag: Tag) extends Table[RepositoryIssue](tag, "issues") {
+class Issues(tag: Tag) extends Table[(Repository.Id, Issue)](tag, "issues") {
 
   private implicit val mapIssue = mapJson[Issue]
 
@@ -28,31 +28,30 @@ class Issues(tag: Tag) extends Table[RepositoryIssue](tag, "issues") {
             issue ::
             repositoryId ::
             HNil =>
-        RepositoryIssue(issue, repositoryId)
-    }, {
-      case RepositoryIssue(issue, repositoryId) =>
-        (issue.id ::
-          issue ::
-          repositoryId ::
-          HNil).some
-    }: RepositoryIssue => Option[Issue.Id :: Issue :: Repository.Id :: HNil])
+        repositoryId -> issue
+    }, { issue: (Repository.Id, Issue) =>
+      (issue._2.id ::
+        issue._2 ::
+        issue._1 ::
+        HNil).some
+    })
 }
 
 class IssueStore(db: Database) extends LazyLogging {
 
   object issues extends TableQuery(new Issues(_))
 
-  def insertOrUpdate(issue: RepositoryIssue): Future[RepositoryIssue] =
+  def insertOrUpdate(issue: (Repository.Id, Issue)): Future[(Repository.Id, Issue)] =
     db.run {
       issues.insertOrUpdate(issue)
     } map (_ => issue)
 
-  def find(id: Issue.Id): Future[Option[RepositoryIssue]] =
+  def find(id: Issue.Id): Future[Option[(Repository.Id, Issue)]] =
     db.run {
       issues.filter(_.id === id).result.headOption
     }
 
-  def findAll(limit: Int, offset: Int): Future[Seq[RepositoryIssue]] =
+  def findAll(limit: Int, offset: Int): Future[Seq[(Repository.Id, Issue)]] =
     db.run {
       issues
         .drop(offset)
@@ -60,8 +59,8 @@ class IssueStore(db: Database) extends LazyLogging {
         .result
     }
 
-  def sink: Sink[RepositoryIssue, Future[Done]] =
-    Sink.foreachAsync[RepositoryIssue](1) { issue =>
+  def sink: Sink[(Repository.Id, Issue), Future[Done]] =
+    Sink.foreachAsync[(Repository.Id, Issue)](1) { issue =>
       for {
         _ <- insertOrUpdate(issue)
       } yield logger.debug("Stored: {}", issue)

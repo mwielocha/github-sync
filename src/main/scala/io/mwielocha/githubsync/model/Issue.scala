@@ -9,7 +9,6 @@ case class Issue(
   url: String,
   user: User,
   title: String,
-  body: Option[String],
   createdAt: Instant,
   updatedAt: Instant
 )

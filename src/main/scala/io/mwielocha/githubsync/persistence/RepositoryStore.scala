@@ -2,7 +2,6 @@ package io.mwielocha.githubsync.persistence
 
 import api._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import io.mwielocha.githubsync.model.Repository
 import shapeless.{ HList, ::, HNil }
 import slickless._
@@ -12,6 +11,7 @@ import akka.stream.scaladsl.Sink
 import akka.NotUsed
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
+import scala.concurrent.ExecutionContext
 
 class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
 
@@ -33,11 +33,13 @@ class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
     })
 }
 
-class RepositoryStore(db: Database) extends LazyLogging {
+class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging {
+
+  import issueStore.issues
 
   object repositories extends TableQuery(new Repositories(_))
 
-  def insertOrUpdate(repository: Repository): Future[Repository] =
+  def insertOrUpdate(repository: Repository)(implicit ec: ExecutionContext): Future[Repository] =
     db.run {
       repositories.insertOrUpdate(repository)
     } map (_ => repository)
@@ -55,7 +57,7 @@ class RepositoryStore(db: Database) extends LazyLogging {
         .result
     }
 
-  def sink: Sink[Repository, Future[Done]] =
+  def sink(implicit ec: ExecutionContext): Sink[Repository, Future[Done]] =
     Sink.foreachAsync[Repository](1) { repository =>
       for {
         _ <- insertOrUpdate(repository)
