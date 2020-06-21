@@ -70,12 +70,11 @@ class GithubRemoteService(
 
   def fastRate: Int =
     basicAuth match {
-      case None => 60
+      case None    => 60
       case Some(_) => 5000
     }
 
   private val call: Call = { uri =>
-
     logger.debug("Submitting request for: {}", uri)
 
     Source
@@ -89,41 +88,44 @@ class GithubRemoteService(
       }.runWith(Sink.head)
   }
 
-
   private val isNextLink: LinkParam => Boolean = {
     case LinkParams.rel("next") => true
     case _                      => false
   }
 
-  private [service] def unfold[T : Decoder](uri: Uri)(empty: => T): UnfoldAsync[T] = unfold(call, uri)(empty)
+  private[service] def unfold[T : Decoder](next: Option[Uri])(empty: => T): UnfoldAsync[T] = unfold(call, next)(empty)
 
-  private [service] def unfold[T : Decoder](call: Call, uri: Uri)(empty: => T): UnfoldAsync[T] =
-    call(uri).flatMap {
+  private[service] def unfold[T : Decoder](call: Call, next: Option[Uri])(empty: => T): UnfoldAsync[T] =
+    next.fold(Future.successful[Option[(Option[Uri], T)]](None)) { uri =>
+      call(uri).flatMap {
+        case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
+          processResponse(uri, response)
 
-      case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
-        processResponse(uri, response)
+        case Success(response) =>
+          processErrorResponse(uri, response)(empty)
 
-      case Success(response) =>
-        processErrorResponse(uri, response)(empty)
-
-      case Failure(e) =>
-        logger.error("Error on request", e)
-        throw e
+        case Failure(e) =>
+          logger.error("Error on request", e)
+          throw e
+      }
     }
 
-  def processResponse[T : Decoder](uri: Uri, response: HttpResponse): UnfoldAsync[T] =
-    (for {
-      result <- OptionT.liftF(unmarshall[T](response))
-      header <- OptionT.fromOption[Future](response.header[Link])
-      link <- OptionT.fromOption[Future] {
-        header.values.find(_.params.exists(isNextLink))
-      }
-    } yield uri.withQuery(link.uri.query()) -> result).value
+  def processResponse[T : Decoder](uri: Uri, response: HttpResponse): UnfoldAsync[T] = {
+
+    val next = for {
+      header <- response.header[Link]
+      link <- header.values.find(_.params.exists(isNextLink))
+    } yield uri.withQuery(link.uri.query())
+
+    unmarshall[T](response).map { result =>
+      (next -> result).some
+    }
+  }
 
   def processErrorResponse[T : Decoder](uri: Uri, response: HttpResponse)(empty: => T): UnfoldAsync[T] = {
     for {
       error <- Unmarshal(response.entity).to[Error]
       _ = logger.error("Got error response from github: {}", error.message)
-    } yield Some(uri -> empty)
+    } yield Some(uri.some -> empty)
   }
 }

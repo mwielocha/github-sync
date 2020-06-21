@@ -9,6 +9,7 @@ import akka.NotUsed
 import akka.stream.ThrottleMode
 import scala.concurrent.duration._ 
 import akka.stream.impl.UnfoldAsync
+import cats.syntax.option._
 
 class GithubIssueService(
   private val api: GithubRemoteService
@@ -23,11 +24,11 @@ class GithubIssueService(
   private [service] def baseQuery(repository: Repository) =
     baseUri(repository).withQuery(Uri.Query("labels" -> "good first issue", "per_page" -> "100"))
 
-  val unfold: Uri => UnfoldAsync[Seq[Issue]] = api.unfold(_)(Nil)
+  private val unfold: Option[Uri] => UnfoldAsync[Seq[Issue]] = api.unfold(_)(Nil)
 
   def source(repository: Repository): Source[Issue, NotUsed] =
    Source
-     .unfoldAsync[Uri, Seq[Issue]](baseQuery(repository))(unfold)
+     .unfoldAsync[Option[Uri], Seq[Issue]](baseQuery(repository).some)(unfold)
      .throttle(fastRate, 1 hour, 1, ThrottleMode.Shaping)
       .mapConcat(identity)
 

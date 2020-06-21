@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.HttpResponse
 
 package object service {
 
-  type UnfoldAsync[T] = Future[Option[(Uri, T)]]
+  type UnfoldAsync[T] = Future[Option[(Option[Uri], T)]]
 
   type Call = Uri => Future[Try[HttpResponse]]
 

@@ -24,6 +24,7 @@ import akka.http.scaladsl.Http
 import scala.concurrent.Future
 import scala.util.Try
 import scala.collection.Searching.SearchResult
+import cats.syntax.option._
 
 class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -68,9 +69,9 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       _ => Future.successful(Try(response))
 
     for {
-      processed <- api.unfold[Search[Repository]](call, baseUri)(Search.empty)
-    } yield processed shouldBe Some(
-      baseUri.withQuery(nextLinkQuery) -> search
+      processed <- api.unfold[Search[Repository]](call, baseUri.some)(Search.empty)
+    } yield processed should contain(
+      baseUri.withQuery(nextLinkQuery).some -> search
     )
   }
 
@@ -85,7 +86,7 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       _ => Future.successful(Try(response))
 
     for {
-      processed <- api.unfold[Search[Repository]](call, baseUri)(Search.empty)
-    } yield processed shouldBe Some(baseUri -> Search.empty)
+      processed <- api.unfold[Search[Repository]](call, baseUri.some)(Search.empty)
+    } yield processed should contain(baseUri.some -> Search.empty)
   }
 }

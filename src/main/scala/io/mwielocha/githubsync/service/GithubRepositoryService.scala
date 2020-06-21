@@ -9,6 +9,7 @@ import akka.NotUsed
 import akka.stream.ThrottleMode
 import scala.concurrent.duration._
 import akka.stream.impl.UnfoldAsync
+import cats.syntax.option._
 
 class GithubRepositoryService(
   private val api: GithubRemoteService
@@ -28,11 +29,11 @@ class GithubRepositoryService(
     )
   )
 
-  val unfold: Uri => UnfoldAsync[Search[Repository]] = api.unfold(_)(Search.empty)
+  private val unfold: Option[Uri] => UnfoldAsync[Search[Repository]] = api.unfold(_)(Search.empty)
 
   def source: Source[Repository, NotUsed] =
    Source
-     .unfoldAsync[Uri, Search[Repository]](baseQuery)(unfold)
+     .unfoldAsync[Option[Uri], Search[Repository]](baseQuery.some)(unfold)
       .map(_.items)
      .throttle(slowRate, 1 minute, 1, ThrottleMode.Shaping)
       .mapConcat(identity)
