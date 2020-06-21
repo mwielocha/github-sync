@@ -32,10 +32,12 @@ class Etags(tag: Tag) extends Table[(Uri, EntityTag)](tag, "etags") {
             HNil =>
         uri -> EntityTag(etag, weak)
     }, { etag: (Uri, EntityTag) =>
-      Some(etag._1 ::
-        etag._2.tag ::
-        etag._2.weak ::
-        HNil)
+      Some(
+        etag._1 ::
+          etag._2.tag ::
+          etag._2.weak ::
+          HNil
+      )
     })
 }
 
@@ -50,14 +52,12 @@ class EtagStore(db: Database) extends LazyLogging {
 
   def find(uri: Uri)(implicit ec: ExecutionContext): Future[Option[EntityTag]] =
     (for {
-       (_, etag) <- OptionT {
+      (_, etag) <- OptionT {
         db.run {
-          etags.filter(_.uri === uri)
-            .result
-            .headOption
+          etags.filter(_.uri === uri).result.headOption
         }
       }
-     } yield etag).value
+    } yield etag).value
 
   def sink(implicit ec: ExecutionContext): Sink[(Uri, EntityTag), Future[Done]] =
     Sink.foreachAsync[(Uri, EntityTag)](1) { etag =>

@@ -26,16 +26,16 @@ class Issues(tag: Tag) extends Table[(Repository.Id, Issue)](tag, "issues") {
 
   override def * =
     id :: issue :: createdAt :: repositoryId :: HNil <> ({
-      case _ :: 
-          issue ::
-          _ ::
+      case _ ::
+            issue ::
+            _ ::
             repositoryId ::
             HNil =>
         repositoryId -> issue
     }, { issue: (Repository.Id, Issue) =>
       (issue._2.id ::
-         issue._2 ::
-         issue._2.createdAt ::
+        issue._2 ::
+        issue._2.createdAt ::
         issue._1 ::
         HNil).some
     })

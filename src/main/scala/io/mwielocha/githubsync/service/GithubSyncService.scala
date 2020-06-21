@@ -26,11 +26,11 @@ import scala.util.Success
 import scala.util.Failure
 
 class GithubSyncService(
-  repos: GithubRepositoryService,
-  issues: GithubIssueService,
-  repoStore: RepositoryStore,
+  etagStore: EtagStore,
   issueStore: IssueStore,
-  etagStore: EtagStore
+  issueService: GithubIssueService,
+  repositoryStore: RepositoryStore,
+  repositoryService: GithubRepositoryService
 )(implicit actorSystem: ActorSystem)
     extends LazyLogging {
 
@@ -41,11 +41,11 @@ class GithubSyncService(
     logger.info("Starting stream...")
 
     graph(
-      repos.source,
+      repositoryService.source,
       repository =>
-        issues
+        issueService
           .source(repository, etagStore.find),
-      repoStore.sink,
+      repositoryStore.sink,
       issueStore.sink,
       etagStore.sink
     ).run()

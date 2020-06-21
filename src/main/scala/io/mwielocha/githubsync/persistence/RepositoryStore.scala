@@ -62,11 +62,11 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
     db.run {
       (for {
         (repos, issues) <- repositories
-        .drop(offset)
-        .take(limit)
-        .joinLeft(issues.sortBy(_.createdAt.desc))
-        .on(_.id === _.repositoryId)
-       } yield repos -> issues.map(_.issue)).result
+          .drop(offset)
+          .take(limit)
+          .joinLeft(issues.sortBy(_.createdAt.desc))
+          .on(_.id === _.repositoryId)
+      } yield repos -> issues.map(_.issue)).result
     }
 
   def sink(implicit ec: ExecutionContext): Sink[Repository, Future[Done]] =
