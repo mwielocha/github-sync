@@ -13,25 +13,29 @@ import akka.NotUsed
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
 import io.mwielocha.githubsync.model.Repository
+import java.time.Instant
 
 class Issues(tag: Tag) extends Table[(Repository.Id, Issue)](tag, "issues") {
 
-  private implicit val mapIssue = mapJson[Issue]
+  implicit val mapIssue = mapJson[Issue]
 
   def id = column[Issue.Id]("id", O.PrimaryKey)
   def issue = column[Issue]("issue")
+  def createdAt = column[Instant]("created_at")
   def repositoryId = column[Repository.Id]("repository_id")
 
   override def * =
-    id :: issue :: repositoryId :: HNil <> ({
-      case _ ::
-            issue ::
+    id :: issue :: createdAt :: repositoryId :: HNil <> ({
+      case _ :: 
+          issue ::
+          _ ::
             repositoryId ::
             HNil =>
         repositoryId -> issue
     }, { issue: (Repository.Id, Issue) =>
       (issue._2.id ::
-        issue._2 ::
+         issue._2 ::
+         issue._2.createdAt ::
         issue._1 ::
         HNil).some
     })

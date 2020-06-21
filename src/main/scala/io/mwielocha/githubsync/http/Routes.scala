@@ -18,7 +18,12 @@ class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSup
     path("challenge") {
       (get & offset & limit) { (offset, limit) =>
         complete(
-          repositoryStore.findAll(offset, limit)
+          repositoryStore.findAllWithLatestIssue(offset, limit).map {
+            _.map {
+              case (repository, issue) =>
+                repository.copy(issue = issue)
+            }
+          }
         )
       }
     }

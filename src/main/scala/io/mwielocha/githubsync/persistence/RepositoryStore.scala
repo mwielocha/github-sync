@@ -2,7 +2,7 @@ package io.mwielocha.githubsync.persistence
 
 import api._
 
-import io.mwielocha.githubsync.model.Repository
+import io.mwielocha.githubsync.model.{ Repository, Issue }
 import shapeless.{ HList, ::, HNil }
 import slickless._
 import cats.syntax.option._
@@ -14,8 +14,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext
 
 class Repositories(tag: Tag) extends Table[Repository](tag, "repositories") {
-
-  private implicit val mapRepository = mapJson[Repository]
+  implicit val mapRepository = mapJson[Repository]
 
   def id = column[Repository.Id]("id", O.PrimaryKey)
   def repository = column[Repository]("repository")
@@ -37,6 +36,8 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
 
   import issueStore.issues
 
+  implicit val mapIssue = mapJson[Issue]
+
   object repositories extends TableQuery(new Repositories(_))
 
   def insertOrUpdate(repository: Repository)(implicit ec: ExecutionContext): Future[Repository] =
@@ -55,6 +56,17 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
         .drop(offset)
         .take(limit)
         .result
+    }
+
+  def findAllWithLatestIssue(limit: Int, offset: Int): Future[Seq[(Repository, Option[Issue])]] =
+    db.run {
+      (for {
+        (repos, issues) <- repositories
+        .drop(offset)
+        .take(limit)
+        .joinLeft(issues.sortBy(_.createdAt.desc))
+        .on(_.id === _.repositoryId)
+       } yield repos -> issues.map(_.issue)).result
     }
 
   def sink(implicit ec: ExecutionContext): Sink[Repository, Future[Done]] =

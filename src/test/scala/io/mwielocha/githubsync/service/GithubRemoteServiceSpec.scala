@@ -47,7 +47,8 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       "LambdaHack",
       "https://github.com/LambdaHack/LambdaHack",
       "LambdaHack/LambdaHack",
-      Some("Haskell game engine library for roguelike dungeon crawlers.")
+      Some("Haskell game engine library for roguelike dungeon crawlers."),
+      None
     )
 
     val search = Search(Seq(repository), 1)
