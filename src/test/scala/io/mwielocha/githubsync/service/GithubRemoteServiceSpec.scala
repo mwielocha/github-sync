@@ -27,13 +27,13 @@ import scala.collection.Searching.SearchResult
 
 class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll {
 
-  private val service = new GithubRemoteService(Http(), GithubAuth(None, None))
-
-  import service.GetPage
+  private val api = new GithubRemoteService(Http(), GithubAuth(None, None))
 
   override def afterAll: Unit = {
     TestKit.shutdownActorSystem(system)
   }
+
+  val baseUri = Uri("/endpoint")
 
   "GithubRemoteService" should "unfold a correct github api response" in {
 
@@ -50,7 +50,7 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
 
     val nextLinkQuery = Uri.Query("page" -> "2")
 
-    val linkValue = LinkValue(service.baseUri.withQuery(nextLinkQuery), LinkParams.rel("next"))
+    val linkValue = LinkValue(baseUri.withQuery(nextLinkQuery), LinkParams.rel("next"))
 
     val linkHeader = Link(linkValue)
 
@@ -64,13 +64,13 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       )
       .withHeaders(Seq(linkHeader))
 
-    val getPage: GetPage =
+    val call: Call =
       _ => Future.successful(Try(response))
 
     for {
-      processed <- service.unfold(getPage, Uri(""))
+      processed <- api.unfold[Search[Repository]](call, baseUri)(Search.empty)
     } yield processed shouldBe Some(
-      service.baseUri.withQuery(nextLinkQuery) -> search
+      baseUri.withQuery(nextLinkQuery) -> search
     )
   }
 
@@ -81,11 +81,11 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
     val response = HttpResponse(403)
       .withEntity(ContentTypes.`application/json`, ByteString.fromString(json))
 
-    val getPage: GetPage =
+    val call: Call =
       _ => Future.successful(Try(response))
 
     for {
-      processed <- service.unfold(getPage, Uri(""))
-    } yield processed shouldBe Some(Uri("") -> Search.empty)
+      processed <- api.unfold[Search[Repository]](call, baseUri)(Search.empty)
+    } yield processed shouldBe Some(baseUri -> Search.empty)
   }
 }

@@ -6,9 +6,7 @@ import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import akka.stream.scaladsl.Source
 import akka.http.scaladsl.model.HttpRequest
 import scala.concurrent.duration._
-import io.mwielocha.githubsync.model.Search
 import io.mwielocha.githubsync.model.Error
-import io.mwielocha.githubsync.model.Repository
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import scala.util.Success
 import scala.concurrent.Future
@@ -36,13 +34,14 @@ import cats.data.OptionT
 import akka.http.scaladsl.model.StatusCodes
 import scala.collection.Searching.SearchResult
 import akka.http.scaladsl.HttpExt
+import io.circe.Decoder
 
 class GithubRemoteService(
   http: HttpExt,
   auth: GithubAuth
 )(
   implicit
-  private val actorSystem: ActorSystem
+  val actorSystem: ActorSystem
 ) extends LazyLogging
     with ErrorAccumulatingCirceSupport {
 
@@ -50,27 +49,25 @@ class GithubRemoteService(
 
   private val pool = http.cachedHostConnectionPoolHttps[Unit](host = "api.github.com")
 
-  private def basicAuth: Option[BasicHttpCredentials] =
+  def basicAuth: Option[BasicHttpCredentials] =
     for {
       username <- auth.username
       authtoken <- auth.authtoken
     } yield BasicHttpCredentials(username, authtoken)
 
-  private def headers: Seq[HttpHeader] =
+  def headers: Seq[HttpHeader] =
     basicAuth.map(Authorization(_)).to(Seq)
 
-  private def unmarshall(response: HttpResponse): Future[Search[Repository]] =
-    Unmarshal(response.entity).to[Search[Repository]]
+  def unmarshall[T : Decoder](response: HttpResponse): Future[T] =
+    Unmarshal(response.entity).to[T]
 
-  private def rate: Int =
+  def rate: Int =
     basicAuth match {
       case None    => 10
       case Some(_) => 30
     }
 
-  private [service] type GetPage = Uri => Future[Try[HttpResponse]]
-
-  private val getPage: GetPage = { uri =>
+  private val call: Call = { uri =>
 
     logger.debug("Submitting request for: {}", uri)
 
@@ -85,61 +82,41 @@ class GithubRemoteService(
       }.runWith(Sink.head)
   }
 
-  private [service] val baseUri = Uri("/search/repositories")
-
-  private [service] val baseQuery = baseUri.withQuery(
-    Uri.Query(
-      "q" -> "good-first-issues:>1 language:haskell",
-      "sort" -> "help-wanted-issues",
-      "order" -> "desc",
-      "per_page" -> "50"
-    )
-  )
 
   private val isNextLink: LinkParam => Boolean = {
     case LinkParams.rel("next") => true
     case _                      => false
   }
 
-  private type UnfoldAsync = Future[Option[(Uri, Search[Repository])]]
+  private [service] def unfold[T : Decoder](uri: Uri)(empty: => T): UnfoldAsync[T] = unfold(call, uri)(empty)
 
-  private [service] def unfold(uri: Uri): UnfoldAsync = unfold(getPage, uri)
-
-  private [service] def unfold(getPage: GetPage, uri: Uri): UnfoldAsync =
-    getPage(uri).flatMap {
+  private [service] def unfold[T : Decoder](call: Call, uri: Uri)(empty: => T): UnfoldAsync[T] =
+    call(uri).flatMap {
 
       case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
-        processResponse(response)
+        processResponse(uri, response)
 
       case Success(response) =>
-        processErrorResponse(uri, response)
+        processErrorResponse(uri, response)(empty)
 
       case Failure(e) =>
         logger.error("Error on request", e)
         throw e
     }
 
-  private[service] def processResponse(response: HttpResponse): UnfoldAsync =
+  def processResponse[T : Decoder](uri: Uri, response: HttpResponse): UnfoldAsync[T] =
     (for {
-      result <- OptionT.liftF(unmarshall(response))
+      result <- OptionT.liftF(unmarshall[T](response))
       header <- OptionT.fromOption[Future](response.header[Link])
       link <- OptionT.fromOption[Future] {
         header.values.find(_.params.exists(isNextLink))
       }
-    } yield baseUri.withQuery(link.uri.query()) -> result).value
+    } yield uri.withQuery(link.uri.query()) -> result).value
 
-  private [service] def processErrorResponse(uri: Uri, response: HttpResponse): UnfoldAsync = {
+  def processErrorResponse[T : Decoder](uri: Uri, response: HttpResponse)(empty: => T): UnfoldAsync[T] = {
     for {
       error <- Unmarshal(response.entity).to[Error]
       _ = logger.error("Got error response from github: {}", error.message)
-    } yield Some(uri -> Search[Repository](Nil, 0))
+    } yield Some(uri -> empty)
   }
-
-  def source: Source[Repository, NotUsed] =
-    Source
-      .unfoldAsync[Uri, Search[Repository]](baseQuery)(unfold)
-      .map(_.items)
-      .throttle(rate, 1 minute, 1, ThrottleMode.Shaping)
-      .mapConcat(identity)
-
 }
