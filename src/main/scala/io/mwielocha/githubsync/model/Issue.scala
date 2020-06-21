@@ -9,6 +9,7 @@ case class Issue(
   url: String,
   user: User,
   title: String,
+  labels: Seq[Label],
   createdAt: Instant,
   updatedAt: Instant
 )

@@ -21,6 +21,7 @@ package object model {
   implicit val userCodec: Codec[User] = deriveConfiguredCodec[User]
   implicit val errorCodec: Codec[Error] = deriveConfiguredCodec[Error]
   implicit val issueCodec: Codec[Issue] = deriveConfiguredCodec[Issue]
+  implicit val labelCodec: Codec[Label] = deriveConfiguredCodec[Label]
   implicit val repositoryCodec: Codec[Repository] = deriveConfiguredCodec[Repository]
 
   implicit def searchCodec[T : Codec]: Codec[Search[T]] = deriveConfiguredCodec[Search[T]]

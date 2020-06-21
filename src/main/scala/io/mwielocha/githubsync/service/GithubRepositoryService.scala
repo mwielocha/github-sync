@@ -10,7 +10,8 @@ import akka.stream.ThrottleMode
 import scala.concurrent.duration._
 import akka.stream.impl.UnfoldAsync
 import cats.syntax.option._
-
+  import scala.concurrent.Future
+  
 class GithubRepositoryService(
   private val api: GithubRemoteService
 ) extends LazyLogging {
@@ -29,13 +30,15 @@ class GithubRepositoryService(
     )
   )
 
-  private val unfold: Option[Uri] => UnfoldAsync[Search[Repository]] = api.unfold(_)(Search.empty)
+  // /search api doesn't support etags
+  private val emptyEtag: GetEtag = _ => Future.successful(None)
 
-  def source: Source[Repository, NotUsed] =
+  private def unfold(uri: Option[Uri]): UnfoldAsync[Search[Repository]] =
+    api.unfold(uri, emptyEtag, Search.empty)
+
+  def source: Source[Resource[Search[Repository]], NotUsed] =
    Source
-     .unfoldAsync[Option[Uri], Search[Repository]](baseQuery.some)(unfold)
-      .map(_.items)
+     .unfoldAsync[Option[Uri], Resource[Search[Repository]]](baseQuery.some)(unfold)
      .throttle(slowRate, 1 minute, 1, ThrottleMode.Shaping)
-      .mapConcat(identity)
 
 }

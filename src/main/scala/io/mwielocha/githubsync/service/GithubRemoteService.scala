@@ -35,6 +35,8 @@ import akka.http.scaladsl.model.StatusCodes
 import scala.collection.Searching.SearchResult
 import akka.http.scaladsl.HttpExt
 import io.circe.Decoder
+import akka.http.scaladsl.model.headers.{ ETag, `Last-Modified`, `If-None-Match` }
+import akka.http.scaladsl.model.headers.EntityTag
 
 class GithubRemoteService(
   http: HttpExt,
@@ -55,8 +57,10 @@ class GithubRemoteService(
       authtoken <- auth.authtoken
     } yield BasicHttpCredentials(username, authtoken)
 
-  def headers: Seq[HttpHeader] =
-    basicAuth.map(Authorization(_)).to(Seq)
+  def headers(etag: Option[EntityTag]): Seq[HttpHeader] =
+    Seq.empty[HttpHeader] ++
+      basicAuth.map(Authorization(_)) ++
+      etag.map(`If-None-Match`(_))
 
   def unmarshall[T : Decoder](response: HttpResponse): Future[T] =
     Unmarshal(response.entity).to[T]
@@ -74,13 +78,13 @@ class GithubRemoteService(
       case Some(_) => 5000
     }
 
-  private val call: Call = { uri =>
+  private val call: Call = { (uri, etag) =>
     logger.debug("Submitting request for: {}", uri)
 
     Source
       .single(
         HttpRequest(uri = uri)
-          .withHeaders(headers) -> ()
+          .withHeaders(headers(etag)) -> ()
       )
       .via(pool).map {
         case (response, _) =>
@@ -93,39 +97,84 @@ class GithubRemoteService(
     case _                      => false
   }
 
-  private[service] def unfold[T : Decoder](next: Option[Uri])(empty: => T): UnfoldAsync[T] = unfold(call, next)(empty)
-
-  private[service] def unfold[T : Decoder](call: Call, next: Option[Uri])(empty: => T): UnfoldAsync[T] =
-    next.fold(Future.successful[Option[(Option[Uri], T)]](None)) { uri =>
-      call(uri).flatMap {
-        case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
-          processResponse(uri, response)
-
-        case Success(response) =>
-          processErrorResponse(uri, response)(empty)
-
-        case Failure(e) =>
-          logger.error("Error on request", e)
-          throw e
-      }
-    }
-
-  def processResponse[T : Decoder](uri: Uri, response: HttpResponse): UnfoldAsync[T] = {
-
-    val next = for {
+  private def extractLink(uri: Uri, response: HttpResponse): Option[Uri] =
+    for {
       header <- response.header[Link]
       link <- header.values.find(_.params.exists(isNextLink))
     } yield uri.withQuery(link.uri.query())
 
-    unmarshall[T](response).map { result =>
-      (next -> result).some
+  private def extractEtag(response: HttpResponse): Option[EntityTag] =
+    for {
+      header <- response.header[ETag]
+    } yield header.etag
+
+  private[service] def unfold[T : Decoder](
+    next: Option[Uri],
+    getEtag: GetEtag,
+    empty: => T
+  ): UnfoldAsync[T] = unfold(call, next, getEtag, empty)
+
+  private[service] def unfold[T : Decoder](
+    call: Call,
+    next: Option[Uri],
+    getEtag: GetEtag,
+    empty: => T
+  ): UnfoldAsync[T] =
+    next.fold(Future.successful(None): UnfoldAsync[T]) { uri =>
+      for {
+        etag <- getEtag(uri)
+        response <- call(uri, etag)
+        result <- process(uri, response, empty)
+      } yield result
     }
+
+  private def process[T : Decoder](
+    uri: Uri,
+    response: Try[HttpResponse],
+    empty: => T
+  ): UnfoldAsync[T] = response match {
+
+    case Success(response @ HttpResponse(StatusCodes.OK, _, _, _)) =>
+      processResponse(uri, response)
+
+    case Success(response @ HttpResponse(StatusCodes.NotModified, _, _, _)) =>
+      processNotModifiedResponse(uri, response, empty)
+
+    case Success(response) =>
+      processErrorResponse(uri, response, empty)
+
+    case Failure(e) =>
+      logger.error("Error on request", e)
+      throw e
+
   }
 
-  def processErrorResponse[T : Decoder](uri: Uri, response: HttpResponse)(empty: => T): UnfoldAsync[T] = {
+  def processResponse[T : Decoder](uri: Uri, response: HttpResponse): UnfoldAsync[T] =
+    unmarshall[T](response).map { result =>
+      (extractLink(uri, response) ->
+        Resource(result, uri, extractEtag(response))).some
+    }
+
+  def processErrorResponse[T : Decoder](
+    uri: Uri,
+    response: HttpResponse,
+    empty: => T
+  ): UnfoldAsync[T] = {
     for {
       error <- Unmarshal(response.entity).to[Error]
       _ = logger.error("Got error response from github: {}", error.message)
-    } yield Some(uri.some -> empty)
+    } yield Some(uri.some -> Resource(empty, uri))
   }
+
+  def processNotModifiedResponse[T : Decoder](
+    uri: Uri,
+    response: HttpResponse,
+    empty: => T
+  ): UnfoldAsync[T] =
+    Future.successful {
+      logger.debug("Not modified: {}", uri)
+      (extractLink(uri, response) ->
+        Resource(empty, uri, None)).some
+    }
+
 }

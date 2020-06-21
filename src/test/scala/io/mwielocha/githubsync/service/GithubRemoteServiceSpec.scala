@@ -25,6 +25,7 @@ import scala.concurrent.Future
 import scala.util.Try
 import scala.collection.Searching.SearchResult
 import cats.syntax.option._
+import akka.http.scaladsl.model.headers.EntityTag
 
 class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -35,6 +36,8 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
   }
 
   val baseUri = Uri("/endpoint")
+
+  val getEtag: GetEtag = _ => Future.successful[Option[EntityTag]](None)
 
   "GithubRemoteService" should "unfold a correct github api response" in {
 
@@ -66,12 +69,12 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       .withHeaders(Seq(linkHeader))
 
     val call: Call =
-      _ => Future.successful(Try(response))
+      (_, _) => Future.successful(Try(response))
 
     for {
-      processed <- api.unfold[Search[Repository]](call, baseUri.some)(Search.empty)
+      processed <- api.unfold[Search[Repository]](call, baseUri.some, getEtag, Search.empty[Repository])
     } yield processed should contain(
-      baseUri.withQuery(nextLinkQuery).some -> search
+      baseUri.withQuery(nextLinkQuery).some -> Resource(search, baseUri)
     )
   }
 
@@ -83,10 +86,10 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
       .withEntity(ContentTypes.`application/json`, ByteString.fromString(json))
 
     val call: Call =
-      _ => Future.successful(Try(response))
+      (_, _) => Future.successful(Try(response))
 
     for {
-      processed <- api.unfold[Search[Repository]](call, baseUri.some)(Search.empty)
-    } yield processed should contain(baseUri.some -> Search.empty)
+      processed <- api.unfold[Search[Repository]](call, baseUri.some, getEtag, Search.empty[Repository])
+    } yield processed should contain(baseUri.some -> Resource(Search.empty, baseUri))
   }
 }

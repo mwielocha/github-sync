@@ -6,6 +6,7 @@ import shapeless.tag
 import shapeless.tag.@@
 
 import scala.reflect.ClassTag
+import akka.http.scaladsl.model.Uri
 
 package object persistence {
 
@@ -25,5 +26,8 @@ package object persistence {
           case Right(json) => json
         }
     )
+
+  implicit val uriType: BaseColumnType[Uri] =
+    MappedColumnType.base[Uri, String](_.toString, Uri(_))
 
 }
