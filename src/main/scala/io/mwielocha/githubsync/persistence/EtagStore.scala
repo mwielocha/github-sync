@@ -57,5 +57,12 @@ class EtagStore(db: Database) extends LazyLogging {
             .headOption
         }
       }
-    } yield etag).value
+     } yield etag).value
+
+  def sink(implicit ec: ExecutionContext): Sink[(Uri, EntityTag), Future[Done]] =
+    Sink.foreachAsync[(Uri, EntityTag)](1) { etag =>
+      for {
+        _ <- insertOrUpdate(etag)
+      } yield logger.debug("Stored: {}", etag)
+    }
 }
