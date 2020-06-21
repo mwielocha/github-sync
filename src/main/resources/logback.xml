@@ -16,7 +16,7 @@
     <logger name="slick.jdbc.JdbcBackend.benchmark" level="INFO" />
     <logger name="slick.jdbc.StatementInvoker.result" level="INFO" />
 
-    <logger name="io.mwielocha.githubsync.storage" level="INFO" />
+    <logger name="io.mwielocha.githubsync.storage" level="DEBUG" />
     <logger name="io.mwielocha.githubsync.service" level="DEBUG" />
 
     <root level="INFO">

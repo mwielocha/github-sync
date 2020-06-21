@@ -14,7 +14,7 @@ class GithubRepositoryService(
   private val api: GithubRemoteService
 ) extends LazyLogging {
 
-  import api.{ actorSystem, rate }
+  import api.{ actorSystem, slowRate }
   import actorSystem.dispatcher
 
   private [service] val baseUri = Uri("/search/repositories")
@@ -34,7 +34,7 @@ class GithubRepositoryService(
    Source
      .unfoldAsync[Uri, Search[Repository]](baseQuery)(unfold)
       .map(_.items)
-     .throttle(rate, 1 minute, 1, ThrottleMode.Shaping)
+     .throttle(slowRate, 1 minute, 1, ThrottleMode.Shaping)
       .mapConcat(identity)
 
 }

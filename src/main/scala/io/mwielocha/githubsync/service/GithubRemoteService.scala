@@ -61,10 +61,17 @@ class GithubRemoteService(
   def unmarshall[T : Decoder](response: HttpResponse): Future[T] =
     Unmarshal(response.entity).to[T]
 
-  def rate: Int =
+  // for /search
+  def slowRate: Int =
     basicAuth match {
       case None    => 10
       case Some(_) => 30
+    }
+
+  def fastRate: Int =
+    basicAuth match {
+      case None => 60
+      case Some(_) => 5000
     }
 
   private val call: Call = { uri =>
