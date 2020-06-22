@@ -6,7 +6,7 @@ import akka.actor.ActorSystem
 import scala.concurrent.Future
 import akka.Done
 import akka.stream.scaladsl.Source
-import io.mwielocha.githubsync.model.{ RepositoryIssue, Repository }
+import io.mwielocha.githubsync.model.Repository
 import akka.NotUsed
 import akka.stream.scaladsl.Sink
 import io.mwielocha.githubsync.model.{ Search, Issue }
