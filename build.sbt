@@ -1,12 +1,10 @@
-
 // Generated with scalagen
 
-lazy val root = (project in file(".")).
-  settings(
-    name := "github-sync",
-    version := "1.0",
-    scalaVersion := "2.13.2"
-  )
+lazy val root = (project in file(".")).settings(
+  name := "github-sync",
+  version := "1.0",
+  scalaVersion := "2.13.2"
+)
 
 mainClass in (Compile, run) := Some("io.mwielocha.githubsync.Boot")
 
@@ -47,7 +45,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
   "com.github.tminglei" %% "slick-pg" % slickpgVersion,
   "com.github.tminglei" %% "slick-pg_circe-json" % slickpgVersion,
-  "io.underscore"      %% "slickless" % slicklessVersion,
+  "io.underscore" %% "slickless" % slicklessVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   // factorio is a ligthweight compile time di framework, in-house made
   // https://github.com/mwielocha/factorio
@@ -65,4 +63,3 @@ libraryDependencies ++= Seq(
   "org.mockito" %% "mockito-scala-scalatest" % mockitoVersion % Test,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
 )
-
