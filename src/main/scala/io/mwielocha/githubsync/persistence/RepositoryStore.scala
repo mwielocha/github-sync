@@ -58,15 +58,27 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
         .result
     }
 
-  def findAllWithLatestIssue(limit: Int, offset: Int): Future[Seq[(Repository, Option[Issue])]] =
+  def findAllWithLatestIssue(limit: Int, offset: Int)(implicit ec: ExecutionContext): Future[Seq[(Repository, Option[Issue])]] =
     db.run {
-      (for {
-        (repos, issues) <- repositories
-          .drop(offset)
-          .take(limit)
-          .joinLeft(issues.sortBy(_.createdAt.desc).take(1))
-          .on(_.id === _.repositoryId)
-      } yield repos -> issues.map(_.issue)).result
+      val latestIssues = issues
+        .join(
+          for {
+            (repositoryId, issues) <- issues.groupBy(_.repositoryId)
+          } yield repositoryId -> issues.map(_.createdAt).max
+        ).on {
+          case (issue, (repositoryId, createdAt)) =>
+            issue.repositoryId === repositoryId &&
+              issue.createdAt === createdAt
+        }.map(_._1)
+
+      val reposWithLatestIssue = for {
+        (repository, issue) <- repositories.joinLeft(latestIssues).on {
+          case (repository, issue) =>
+            repository.id === issue.repositoryId
+        }
+      } yield repository -> issue.map(_.issue)
+
+      reposWithLatestIssue.drop(offset).take(limit).result
     }
 
   def sink(implicit ec: ExecutionContext): Sink[Repository, Future[Done]] =

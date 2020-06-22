@@ -13,6 +13,7 @@ mainClass in (Compile, run) := Some("io.mwielocha.githubsync.Boot")
 val akkaVersion = "2.6.4"
 val slickVersion = "3.3.2"
 val circeVersion = "0.13.0"
+val mockitoVersion = "1.14.7"
 val slickpgVersion = "0.19.0"
 val logbackVersion = "1.2.3"
 val factorioVersion = "0.2.0"
@@ -59,6 +60,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+  "org.mockito" %% "mockito-scala-scalatest" % mockitoVersion % Test,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
 )
 

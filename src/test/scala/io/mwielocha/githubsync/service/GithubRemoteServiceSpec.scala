@@ -27,7 +27,7 @@ import scala.collection.Searching.SearchResult
 import cats.syntax.option._
 import akka.http.scaladsl.model.headers.EntityTag
 
-class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll {
+class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSpec")) with AsyncFlatSpecLike with Matchers with BeforeAndAfterAll with Fixtures {
 
   private val api = new GithubRemoteService(Http(), GithubAuth(None, None))
 
@@ -40,16 +40,6 @@ class GithubRemoteServiceSpec extends TestKit(ActorSystem("GithubRemoteServiceSp
   val getEtag: GetEtag = _ => Future.successful[Option[EntityTag]](None)
 
   "GithubRemoteService" should "unfold a correct github api response" in {
-
-    val repository = Repository(
-      Repository.Id(956452),
-      User(User.Id(7874557), "LambdaHack"),
-      "LambdaHack",
-      "https://github.com/LambdaHack/LambdaHack",
-      "LambdaHack/LambdaHack",
-      Some("Haskell game engine library for roguelike dungeon crawlers."),
-      None
-    )
 
     val search = Search(Seq(repository), 1)
 

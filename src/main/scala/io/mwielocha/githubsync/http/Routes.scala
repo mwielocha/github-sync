@@ -8,8 +8,11 @@ import io.mwielocha.githubsync.model.Repository
 import io.mwielocha.githubsync.model.User
 import io.mwielocha.githubsync.persistence.RepositoryStore
 import scala.annotation.meta.param
+import io.circe.Printer
 
 class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSupport {
+
+  private final implicit val printer = Printer.noSpaces.copy(dropNullValues = true)
 
   private val limit = parameter("offset" ? 0)
   private val offset = parameter("limit" ? 50)
@@ -20,8 +23,8 @@ class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSup
         complete(
           repositoryStore.findAllWithLatestIssue(offset, limit).map {
             _.map {
-              case (repository, issue) =>
-                repository.copy(issue = issue)
+              case (repository, latestIssue) =>
+                repository.copy(latestIssue = latestIssue)
             }
           }
         )

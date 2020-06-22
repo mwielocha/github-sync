@@ -173,8 +173,8 @@ class GithubRemoteService(
   ): UnfoldAsync[T] =
     Future.successful {
       logger.debug("Not modified: {}", uri)
-      (extractLink(uri, response) ->
-        Resource(empty, uri, None)).some
+      val link = extractLink(uri, response)
+      (link -> Resource(empty, uri, None)).some
     }
 
 }
