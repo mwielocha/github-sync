@@ -46,6 +46,8 @@ libraryDependencies ++= Seq(
   "com.github.tminglei" %% "slick-pg_circe-json" % slickpgVersion,
   "io.underscore"      %% "slickless" % slicklessVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
+  // factorio is a ligthweight compile time di framework, in-house made
+  // https://github.com/mwielocha/factorio
   "io.mwielocha" %% "factorio-core" % factorioVersion,
   "io.mwielocha" %% "factorio-annotations" % factorioVersion,
   "io.mwielocha" %% "factorio-macro" % factorioVersion % "provided",

@@ -64,7 +64,7 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
         (repos, issues) <- repositories
           .drop(offset)
           .take(limit)
-          .joinLeft(issues.sortBy(_.createdAt.desc))
+          .joinLeft(issues.sortBy(_.createdAt.desc).take(1))
           .on(_.id === _.repositoryId)
       } yield repos -> issues.map(_.issue)).result
     }

@@ -34,6 +34,8 @@ class GithubSyncService(
 )(implicit actorSystem: ActorSystem)
     extends LazyLogging {
 
+  private val streamDelay = 5 seconds
+
   import actorSystem.dispatcher
 
   def start(): Future[Done] = {
@@ -54,8 +56,8 @@ class GithubSyncService(
   def loop(): Unit =
     start().onComplete {
       case Success(_) =>
-        logger.info("Stream finished.")
-        actorSystem.scheduler.scheduleOnce(10 seconds)(loop)
+        logger.info("Stream finished, scheduling new run in {}", streamDelay)
+        actorSystem.scheduler.scheduleOnce(streamDelay)(loop)
       case Failure(e) =>
         logger.error("Error while streaming from github", e)
     }
@@ -66,13 +68,25 @@ class GithubSyncService(
   def graph[Out](
     repoIn: Source[Repositories, NotUsed],
     issueIn: Repository => Source[Issues, NotUsed],
-    repoOut: Sink[Repository, Future[Done]],
-    issueOut: Sink[(Repository.Id, Issue), Out],
+    repoOut: Sink[Repository, Out],
+    issueOut: Sink[(Repository.Id, Issue), Future[Done]],
     etagOut: Sink[(Uri, EntityTag), Future[Done]]
   ): RunnableGraph[Out] = RunnableGraph.fromGraph {
 
-    GraphDSL.create(issueOut) { implicit builder => issueOut =>
+    GraphDSL.create(repoOut) { implicit builder => repoOut =>
       import GraphDSL.Implicits._
+
+      /*                    |---|
+       *         |-----| ~> |out| ~> //
+       *         |     |    |---|                 |----|    |---|
+       * repo ~> |split|               |-----| ~> |etag| ~> |out|
+       *         |     |    |-----|    |     |    |----|    |---|
+       *         |-----| ~> |issue| ~> |split|
+       *                    |-----|    |     |    |---|
+       *                               |-----| ~> |out|
+       *                                          |---|
+       */
+
 
       val repoSplitter = builder.add(Broadcast[Repository](2))
 
@@ -86,13 +100,13 @@ class GithubSyncService(
             Source.empty
         }
 
-      val issueFlow = Flow[(Repository, Issues)]
+      val issueExtractFlow = Flow[(Repository, Issues)]
         .mapConcat[(Repository.Id, Issue)] {
           case (repo, Resource(issues, _, _)) =>
             issues.map(repo.id -> _)
         }
 
-      val issueInFlow = Flow[Repository]
+      val issueFlatMapFlow = Flow[Repository]
         .flatMapConcat { repo =>
           issueIn(repo).map {
             repo -> _
@@ -104,22 +118,22 @@ class GithubSyncService(
           _.data.items
         }
 
-      val in = RestartSource
+      val restartingIn = RestartSource
         .onFailuresWithBackoff(
           minBackoff = 2 seconds,
           maxBackoff = 10 seconds,
           randomFactor = 0.2
         )(() => repoIn)
 
-      in ~> repoFlow ~> repoSplitter.in
+      restartingIn ~> repoFlow ~> repoSplitter.in
 
-      repoSplitter ~> issueInFlow ~> issueSplitter.in
+      repoSplitter ~> issueFlatMapFlow ~> issueSplitter.in
 
       repoSplitter ~> repoOut
 
       issueSplitter ~> etagFlow ~> etagOut
 
-      issueSplitter ~> issueFlow ~> issueOut
+      issueSplitter ~> issueExtractFlow ~> issueOut
 
       ClosedShape
     }
