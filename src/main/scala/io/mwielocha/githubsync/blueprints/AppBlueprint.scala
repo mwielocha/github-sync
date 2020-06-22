@@ -6,7 +6,7 @@ import factorio._
 import io.mwielocha.githubsync.config.GithubAuth
 
 @blueprint
-class AppBlueprint(config: AppConfig) extends AkkaBlueprint with HttpBlueprint with DBBlueprint with ServiceBlueprint {
+class AppBlueprint(config: AppConfig) extends AkkaBlueprint with HttpBlueprint with DBBlueprint {
 
   @provides
   def getConfig: AppConfig =
