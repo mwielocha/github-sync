@@ -7,6 +7,6 @@ case class AppConfig(
 )
 
 case class GithubAuth(
-  username: Option[String],
-  authtoken: Option[String]
+  username: Option[String] = None,
+  authtoken: Option[String] = None
 )

@@ -1,10 +1,13 @@
 // Generated with scalagen
 
-lazy val root = (project in file(".")).settings(
-  name := "github-sync",
-  version := "1.0",
-  scalaVersion := "2.13.2"
-)
+lazy val root = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings,
+    name := "github-sync",
+    version := "1.0",
+    scalaVersion := "2.13.2"
+  )
 
 mainClass in (Compile, run) := Some("io.mwielocha.githubsync.Boot")
 
@@ -58,8 +61,8 @@ libraryDependencies ++= Seq(
   "de.heikoseeberger" %% "akka-http-circe" % akkaHttpCirceVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
-  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test,it",
+  "org.scalatest" %% "scalatest" % scalatestVersion % "test,it",
   "org.mockito" %% "mockito-scala-scalatest" % mockitoVersion % Test,
   "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test
 )
