@@ -34,7 +34,9 @@ scalacOptions ++= Seq(
   "-language:existentials",
   "-language:higherKinds",
   "-language:postfixOps",
-  "-Xmacro-settings:factorio-verbose"
+  "-Xmacro-settings:factorio-verbose",
+  "-Wunused",
+  "-Wconf:cat=deprecation:ws,cat=feature:ws,cat=optimizer:ws,cat=unused-imports:w"
 )
 
 libraryDependencies ++= Seq(

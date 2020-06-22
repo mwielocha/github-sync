@@ -8,7 +8,6 @@ import io.mwielocha.githubsync.model.Repository
 import akka.NotUsed
 import akka.stream.ThrottleMode
 import scala.concurrent.duration._
-import akka.stream.impl.UnfoldAsync
 import cats.syntax.option._
 import scala.concurrent.Future
 

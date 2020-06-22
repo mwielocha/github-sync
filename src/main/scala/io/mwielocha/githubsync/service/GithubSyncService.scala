@@ -12,15 +12,12 @@ import akka.stream.scaladsl.Sink
 import io.mwielocha.githubsync.model.{ Search, Issue }
 import akka.stream.scaladsl.RunnableGraph
 import akka.stream.scaladsl.GraphDSL
-import akka.stream.scaladsl.Partition
 import akka.stream.scaladsl.Broadcast
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.Flow
 import akka.http.scaladsl.model.headers.EntityTag
 import akka.http.scaladsl.model.Uri
-import akka.stream.SinkShape
 import akka.stream.scaladsl.RestartSource
-import akka.stream.SourceShape
 import scala.concurrent.duration._
 import scala.util.Success
 import scala.util.Failure

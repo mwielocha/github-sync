@@ -1,28 +1,20 @@
 package io.mwielocha.githubsync.service
 
-import akka.http.scaladsl.Http
 import akka.actor.ActorSystem
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import akka.stream.scaladsl.Source
 import akka.http.scaladsl.model.HttpRequest
-import scala.concurrent.duration._
 import io.mwielocha.githubsync.model.Error
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import scala.util.Success
 import scala.concurrent.Future
 import scala.util.Failure
 import com.typesafe.scalalogging.LazyLogging
-import akka.NotUsed
-import akka.http.scaladsl.common.JsonEntityStreamingSupport
-import akka.http.scaladsl.common.EntityStreamingSupport
-import akka.http.scaladsl.unmarshalling._
 import akka.http.scaladsl.model.HttpResponse
 import io.mwielocha.githubsync.config.GithubAuth
 import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.Authorization
-import akka.http.scaladsl.model.headers.HttpCredentials
 import akka.http.scaladsl.model.headers.BasicHttpCredentials
-import akka.stream.ThrottleMode
 import akka.http.scaladsl.model.Uri
 import akka.stream.scaladsl.Sink
 import scala.util.Try
@@ -30,12 +22,10 @@ import cats.implicits._
 import akka.http.scaladsl.model.headers.Link
 import akka.http.scaladsl.model.headers.LinkParam
 import akka.http.scaladsl.model.headers.LinkParams
-import cats.data.OptionT
 import akka.http.scaladsl.model.StatusCodes
-import scala.collection.Searching.SearchResult
 import akka.http.scaladsl.HttpExt
 import io.circe.Decoder
-import akka.http.scaladsl.model.headers.{ ETag, `Last-Modified`, `If-None-Match` }
+import akka.http.scaladsl.model.headers.{ ETag, `If-None-Match` }
 import akka.http.scaladsl.model.headers.EntityTag
 
 class GithubRemoteService(

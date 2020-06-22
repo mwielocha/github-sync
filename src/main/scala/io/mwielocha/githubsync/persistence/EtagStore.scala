@@ -2,20 +2,16 @@ package io.mwielocha.githubsync.persistence
 
 import api._
 
-import shapeless.{ HList, ::, HNil }
+import shapeless.{ ::, HNil }
 import slickless._
-import cats.syntax.option._
 import scala.concurrent.Future
 import akka.stream.scaladsl.Sink
-import akka.NotUsed
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
-import io.mwielocha.githubsync.model.Repository
 import akka.http.scaladsl.model.headers.EntityTag
 import akka.http.scaladsl.model.Uri
 import scala.concurrent.ExecutionContext
 import cats.implicits._
-import cats.syntax.option._
 import cats.data.OptionT
 
 class Etags(tag: Tag) extends Table[(Uri, EntityTag)](tag, "etags") {

@@ -5,9 +5,7 @@ import io.circe.{ Json, Printer }
 import io.circe.parser.parse
 import slick.jdbc.JdbcType
 import io.circe.syntax._
-import com.github.tminglei.slickpg._
 import slick.basic.Capability
-import slick.driver.JdbcProfile
 import slick.jdbc.JdbcCapabilities
 
 trait PostgresProfile extends slick.jdbc.PostgresProfile with PgCirceJsonSupport {

@@ -3,12 +3,11 @@ package io.mwielocha.githubsync.persistence
 import api._
 
 import io.mwielocha.githubsync.model.{ Repository, Issue }
-import shapeless.{ HList, ::, HNil }
+import shapeless.{ ::, HNil }
 import slickless._
 import cats.syntax.option._
 import scala.concurrent.Future
 import akka.stream.scaladsl.Sink
-import akka.NotUsed
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext
@@ -58,7 +57,7 @@ class RepositoryStore(db: Database, issueStore: IssueStore) extends LazyLogging 
         .result
     }
 
-  def findAllWithLatestIssue(limit: Int, offset: Int)(implicit ec: ExecutionContext): Future[Seq[(Repository, Option[Issue])]] =
+  def findAllWithLatestIssue(limit: Int, offset: Int): Future[Seq[(Repository, Option[Issue])]] =
     db.run {
       val latestIssues = issues
         .join(

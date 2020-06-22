@@ -2,12 +2,8 @@ package io.mwielocha.githubsync.http
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import scala.concurrent.Future
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
-import io.mwielocha.githubsync.model.Repository
-import io.mwielocha.githubsync.model.User
 import io.mwielocha.githubsync.persistence.RepositoryStore
-import scala.annotation.meta.param
 import io.circe.Printer
 
 class Routes(repositoryStore: RepositoryStore) extends ErrorAccumulatingCirceSupport {

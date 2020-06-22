@@ -4,12 +4,11 @@ import api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.mwielocha.githubsync.model.Issue
-import shapeless.{ HList, ::, HNil }
+import shapeless.{ ::, HNil }
 import slickless._
 import cats.syntax.option._
 import scala.concurrent.Future
 import akka.stream.scaladsl.Sink
-import akka.NotUsed
 import akka.Done
 import com.typesafe.scalalogging.LazyLogging
 import io.mwielocha.githubsync.model.Repository

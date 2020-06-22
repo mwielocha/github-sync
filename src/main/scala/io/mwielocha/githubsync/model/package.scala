@@ -7,9 +7,11 @@ import io.circe.Encoder
 import shapeless.tag
 import shapeless.tag.@@
 import io.circe.Decoder
+import scala.annotation.nowarn
 
 package object model {
 
+  @nowarn("cat=unused")
   private implicit val codecConfig = Configuration.default.withSnakeCaseMemberNames
 
   implicit def encodeTypeLongId[T]: Encoder[Long @@ T] =
