@@ -27,6 +27,7 @@ import akka.http.scaladsl.HttpExt
 import io.circe.Decoder
 import akka.http.scaladsl.model.headers.{ ETag, `If-None-Match` }
 import akka.http.scaladsl.model.headers.EntityTag
+import scala.concurrent.duration._
 
 class GithubRemoteService(
   http: HttpExt,
@@ -56,16 +57,16 @@ class GithubRemoteService(
     Unmarshal(response.entity).to[T]
 
   // for /search
-  def slowRate: Int =
+  def slowRate: Rate =
     basicAuth match {
-      case None    => 10
-      case Some(_) => 30
+      case None    => Rate(10, 1 minute)
+      case Some(_) => Rate(30, 1 minute)
     }
 
-  def fastRate: Int =
+  def fastRate: Rate =
     basicAuth match {
-      case None    => 60
-      case Some(_) => 5000
+      case None    => Rate(60, 1 hour)
+      case Some(_) => Rate(5000, 1 hour)
     }
 
   private[service] val call: Call = { (uri, etag) =>

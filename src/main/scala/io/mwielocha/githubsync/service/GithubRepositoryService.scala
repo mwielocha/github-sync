@@ -7,7 +7,6 @@ import io.mwielocha.githubsync.model.Search
 import io.mwielocha.githubsync.model.Repository
 import akka.NotUsed
 import akka.stream.ThrottleMode
-import scala.concurrent.duration._
 import cats.syntax.option._
 import scala.concurrent.Future
 
@@ -15,8 +14,7 @@ class GithubRepositoryService(
   private val api: GithubRemoteService
 ) extends LazyLogging {
 
-  import api.{ actorSystem, slowRate }
-  import actorSystem.dispatcher
+  import api.slowRate
 
   private[service] val baseUri = Uri("/search/repositories")
 
@@ -38,6 +36,6 @@ class GithubRepositoryService(
   def source: Source[Resource[Search[Repository]], NotUsed] =
     Source
       .unfoldAsync[Option[Uri], Resource[Search[Repository]]](baseQuery.some)(unfold)
-      .throttle(slowRate, 1 minute, 1, ThrottleMode.Shaping)
+      .throttle(slowRate.amount, slowRate.interval, 1, ThrottleMode.Shaping)
 
 }

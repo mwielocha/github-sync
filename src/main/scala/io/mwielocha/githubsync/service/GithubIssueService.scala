@@ -7,15 +7,13 @@ import io.mwielocha.githubsync.model.Issue
 import io.mwielocha.githubsync.model.Repository
 import akka.NotUsed
 import akka.stream.ThrottleMode
-import scala.concurrent.duration._
 import cats.syntax.option._
 
 class GithubIssueService(
   private val api: GithubRemoteService
 ) extends LazyLogging {
 
-  import api.{ actorSystem, fastRate }
-  import actorSystem.dispatcher
+  import api.fastRate
 
   private[service] def baseUri(repository: Repository) =
     Uri(s"/repos/${repository.owner.login}/${repository.name}/issues")
@@ -28,6 +26,6 @@ class GithubIssueService(
   def source(repository: Repository, getEtag: GetEtag): Source[Resource[Seq[Issue]], NotUsed] =
     Source
       .unfoldAsync[Option[Uri], Resource[Seq[Issue]]](baseQuery(repository).some)(unfold(_, getEtag))
-      .throttle(fastRate, 1 hour, 1, ThrottleMode.Shaping)
+      .throttle(fastRate.amount, fastRate.interval, 1, ThrottleMode.Shaping)
 
 }
