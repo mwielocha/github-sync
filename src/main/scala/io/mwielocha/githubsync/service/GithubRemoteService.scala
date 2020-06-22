@@ -68,7 +68,7 @@ class GithubRemoteService(
       case Some(_) => 5000
     }
 
-  private [service] val call: Call = { (uri, etag) =>
+  private[service] val call: Call = { (uri, etag) =>
     logger.debug("Submitting request for: {}", uri)
 
     Source
@@ -87,13 +87,13 @@ class GithubRemoteService(
     case _                      => false
   }
 
-  private [service] def extractLink(uri: Uri, response: HttpResponse): Option[Uri] =
+  private[service] def extractLink(uri: Uri, response: HttpResponse): Option[Uri] =
     for {
       header <- response.header[Link]
       link <- header.values.find(_.params.exists(isNextLink))
     } yield uri.withQuery(link.uri.query())
 
-  private [service] def extractEtag(response: HttpResponse): Option[EntityTag] =
+  private[service] def extractEtag(response: HttpResponse): Option[EntityTag] =
     for {
       header <- response.header[ETag]
     } yield header.etag

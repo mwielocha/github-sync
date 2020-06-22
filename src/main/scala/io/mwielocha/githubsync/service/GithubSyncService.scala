@@ -84,7 +84,6 @@ class GithubSyncService(
        *                                          |---|
        */
 
-
       val repoSplitter = builder.add(Broadcast[Repository](2))
 
       val issueSplitter = builder.add(Broadcast[(Repository, Issues)](2))
