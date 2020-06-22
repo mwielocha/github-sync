@@ -1,6 +1,5 @@
 package io.mwielocha.githubsync.service
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mockito.MockitoSugar
 import akka.testkit.TestKit
@@ -8,14 +7,12 @@ import akka.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
 import akka.stream.scaladsl.Source
 import io.mwielocha.githubsync.model.Search
-import io.mwielocha.githubsync.model.Repository
 import akka.http.scaladsl.model.Uri
 import akka.stream.scaladsl.Sink
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import io.mwielocha.githubsync.persistence.EtagStore
 import io.mwielocha.githubsync.persistence.IssueStore
 import io.mwielocha.githubsync.persistence.RepositoryStore
-import org.mockito.Mockito
 
 class GithubSyncServiceSpec extends TestKit(ActorSystem("GithubSyncServiceSpec"))
     with AsyncFlatSpecLike

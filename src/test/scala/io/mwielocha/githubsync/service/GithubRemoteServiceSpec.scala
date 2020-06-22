@@ -1,6 +1,5 @@
 package io.mwielocha.githubsync.service
 
-import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 import io.mwielocha.githubsync.config.GithubAuth
 import akka.testkit.TestKit
@@ -16,14 +15,11 @@ import akka.util.ByteString
 import akka.http.scaladsl.model.headers.Link
 import akka.http.scaladsl.model.headers.LinkParams
 import akka.http.scaladsl.model.headers.LinkValue
-import io.mwielocha.githubsync.model.User
-import io.mwielocha.githubsync.model.Error
 import io.circe.syntax._
 import io.circe.Printer
 import akka.http.scaladsl.Http
 import scala.concurrent.Future
 import scala.util.Try
-import scala.collection.Searching.SearchResult
 import cats.syntax.option._
 import akka.http.scaladsl.model.headers.EntityTag
 
